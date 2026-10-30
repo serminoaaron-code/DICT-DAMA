@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DICT Digital Dama Sportsfest - Multi-Server Tournament Hub</title>
+
+  <!-- External Libraries JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <!-- Firebase v8 SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    :root { 
+      --bg-dark: #0a0203;
+      --bg-red-gradient: radial-gradient(circle at 50% 20%, #3d050d 0%, #170205 60%, #080002 100%);
+      --panel-bg: rgba(20, 6, 9, 0.88);
+      --panel-border: #7f1d1d;
+      --panel-glow: 0 4px 20px rgba(185, 28, 28, 0.25);
+      
+      --dama-red: #dc2626;
+      --dama-red-dark: #991b1b;
+      --dama-gold: #f59e0b;
+      --dama-gold-bright: #fbbf24;
+      
+      --text-light: #fef2f2;
+      --text-muted: #fca5a5;
+      --text-dim: #991b1b;
+      
+      --border-red: #450a0a;
+      --border-accent: #b91c1c;
+      
+      --sq-dark: #2d0a0e;
+      --sq-light: #7f1d1d;
+      --sq-highlight: #d97706;
+    }
+    
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    
+    body { 
+      margin: 0; 
+      background: var(--bg-dark);
+      background-image: 
+        linear-gradient(45deg, rgba(185, 28, 28, 0.08) 25%, transparent 25%), 
+        linear-gradient(-45deg, rgba(185, 28, 28, 0.08) 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, rgba(185, 28, 28, 0.08) 75%), 
+        linear-gradient(-45deg, transparent 75%, rgba(185, 28, 28, 0.08) 75%),
+        var(--bg-red-gradient);
+      background-size: 60px 60px, 60px 60px, 60px 60px, 60px 60px, 100% 100%;
+      background-position: 0 0, 0 30px, 30px -30px, -30px 0px, 0 0;
+      color: var(--text-light); 
+      padding-bottom: 50px; 
+      min-height: 100vh;
+    }
+    
+    button, input, select { font: inherit; padding: 11px 14px; border-radius: 8px; border: 1px solid var(--border-accent); outline: none; }
+    button { 
+      background: linear-gradient(135deg, var(--dama-red) 0%, var(--dama-red-dark) 100%); 
+      color: #ffffff; 
+      font-weight: bold; 
+      cursor: pointer; 
+      transition: all 0.2s ease; 
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    button.secondary { 
+      background: rgba(45, 10, 14, 0.8); 
+      color: var(--text-light); 
+      border: 1px solid var(--panel-border); 
+      box-shadow: none;
+    }
+    button.danger { 
+      background: linear-gradient(135deg, #ef4444 0%, #7f1d1d 100%); 
+      color: #fff; 
+    }
+    button.gold {
+      background: linear-gradient(135deg, var(--dama-gold-bright) 0%, #b45309 100%);
+      color: #000;
+    }
+    button:hover { filter: brightness(1.2); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+    
+    input, select { background: rgba(10, 2, 3, 0.9); border: 1px solid var(--panel-border); color: var(--text-light); width: 100%; }
+    input:focus, select:focus { border-color: var(--dama-red); box-shadow: 0 0 8px rgba(220, 38, 38, 0.5); }
+    label { display: block; color: var(--text-muted); margin: 8px 0 4px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .layout { max-width: 1280px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .panel { 
+      background: var(--panel-bg); 
+      border: 1px solid var(--panel-border); 
+      border-radius: 12px; 
+      padding: 22px; 
+      box-shadow: var(--panel-glow); 
+      backdrop-filter: blur(8px);
+    }
+    .full { grid-column: 1 / -1; }
+    
+    .header-card { 
+      padding: 0; 
+      overflow: hidden; 
+      border: 2px solid var(--dama-red); 
+      border-radius: 14px; 
+      background: #000000; 
+      width: 100%;
+      box-shadow: 0 0 25px rgba(220, 38, 38, 0.35);
+    }
+
+    .header-banner { 
+      padding: 25px 20px;
+      background: linear-gradient(90deg, #450a0a 0%, #991b1b 50%, #450a0a 100%);
+      text-align: center;
+      border-bottom: 2px solid var(--dama-red);
+      position: relative;
+    }
+    .header-banner h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.8), 2px 2px 4px #000;
+      letter-spacing: 1px;
+    }
+    .header-banner p {
+      margin: 6px 0 0;
+      color: var(--dama-gold-bright);
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .header-status-bar { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 12px 20px; 
+      background: rgba(15, 3, 5, 0.95); 
+      flex-wrap: wrap; 
+      gap: 10px; 
+    }
+    
+    .badge { font-size: 12px; font-weight: bold; background: #170205; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--panel-border); display: inline-flex; align-items: center; gap: 6px; color: var(--text-light); }
+    .badge.green { border-color: #22c55e; color: #4ade80; background: rgba(22, 101, 52, 0.3); }
+    .badge.red { border-color: var(--dama-red); color: #fca5a5; background: rgba(153, 27, 27, 0.3); }
+    .badge.yellow { border-color: var(--dama-gold); color: var(--dama-gold-bright); background: rgba(180, 83, 9, 0.3); }
+
+    /* Server Selector Toolbar */
+    .server-bar {
+      display: flex;
+      gap: 10px;
+      background: rgba(10, 2, 3, 0.7);
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--panel-border);
+      margin-bottom: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .server-tab {
+      flex: 1;
+      min-width: 110px;
+      padding: 10px;
+      text-align: center;
+      background: rgba(30, 8, 12, 0.8);
+      border: 1px solid var(--border-red);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .server-tab:hover {
+      border-color: var(--dama-red);
+      background: rgba(60, 15, 20, 0.9);
+    }
+    .server-tab.active {
+      background: linear-gradient(135deg, var(--dama-red) 0%, #7f1d1d 100%);
+      border-color: var(--dama-gold);
+      box-shadow: 0 0 12px rgba(220, 38, 38, 0.5);
+    }
+    .server-tab .server-title { font-weight: bold; font-size: 13px; color: #fff; }
+    .server-tab .server-status { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .arena { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 10px; position: relative; }
+    
+    /* Dama Board Styling */
+    #board-container {
+      width: 100%;
+      max-width: 440px;
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 30px rgba(220, 38, 38, 0.3), 0 8px 24px rgba(0,0,0,0.8);
+      border: 4px solid var(--dama-red);
+      position: relative;
+      user-select: none;
+      background: #0a0203;
+    }
+
+    .dama-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      width: 100%;
+      height: 100%;
+    }
+
+    .dama-sq {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+    .dama-sq.light { background-color: var(--sq-light); }
+    .dama-sq.dark { background-color: var(--sq-dark); }
+    .dama-sq.selected { background-color: var(--sq-highlight) !important; box-shadow: inset 0 0 10px #000; }
+    .dama-sq.valid-move::after {
+      content: '';
+      width: 28%;
+      height: 28%;
+      background: rgba(74, 222, 128, 0.85);
+      border-radius: 50%;
+      box-shadow: 0 0 8px #22c55e;
+    }
+
+    /* Dama Pieces */
+    .piece {
+      width: 80%;
+      height: 80%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.7);
+      font-weight: bold;
+      font-size: 18px;
+      transition: transform 0.15s ease;
+      position: relative;
+    }
+    .piece:hover { transform: scale(1.08); }
+    .piece.white-piece {
+      background: radial-gradient(circle at 35% 35%, #ffffff, #d1d5db);
+      border: 3px solid #9ca3af;
+      color: #000000;
+    }
+    .piece.black-piece {
+      background: radial-gradient(circle at 35% 35%, #ef4444, #450a0a);
+      border: 3px solid #fca5a5;
+      color: #ffffff;
+    }
+    .piece.king::before {
+      content: '👑';
+      font-size: 18px;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.8));
+    }
+    
+    .player-card { 
+      background: rgba(30, 8, 12, 0.9); 
+      padding: 12px 18px; 
+      border-radius: 10px; 
+      width: 100%; 
+      max-width: 440px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      border: 1px solid var(--panel-border); 
+    }
+    .player-info { display: flex; flex-direction: column; gap: 4px; }
+    .player-name { font-weight: bold; font-size: 16px; color: var(--text-light); }
+    .player-status-tag { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+    
+    .clock { 
+      font-size: 22px; 
+      font-family: monospace; 
+      font-weight: bold; 
+      background: #000000; 
+      padding: 6px 14px; 
+      border-radius: 8px; 
+      border: 1px solid var(--panel-border); 
+      color: var(--text-muted); 
+      min-width: 90px; 
+      text-align: center; 
+    }
+    .clock.active { 
+      border-color: var(--dama-red); 
+      color: #ffffff; 
+      box-shadow: 0 0 12px rgba(220, 38, 38, 0.6); 
+      background: rgba(127, 29, 29, 0.4); 
+    }
+    .clock.low { 
+      border-color: var(--dama-gold); 
+      color: var(--dama-gold-bright); 
+      animation: pulse 1s infinite; 
+      background: rgba(180, 83, 9, 0.4); 
+    }
+    
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+    .game-over-banner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(10, 2, 3, 0.95);
+      color: #ffffff;
+      padding: 20px 28px;
+      border-radius: 12px;
+      text-align: center;
+      z-index: 1000;
+      box-shadow: 0 0 35px rgba(220, 38, 38, 0.8);
+      border: 2px solid var(--dama-gold);
+      min-width: 280px;
+    }
+
+    .stack { display: flex; flex-direction: column; gap: 12px; }
+    .row { display: flex; gap: 10px; align-items: center; }
+    .scroll { overflow: auto; max-height: 320px; border-radius: 8px; border: 1px solid var(--panel-border); }
+    
+    table { width: 100%; border-collapse: collapse; text-align: left; background: rgba(15, 3, 5, 0.8); }
+    th { background: rgba(45, 10, 14, 0.9); padding: 12px; color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; border-bottom: 2px solid var(--panel-border); }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border-red); font-size: 13.5px; color: var(--text-light); }
+    tr:last-child td { border-bottom: 0; }
+    tr:hover { background: rgba(127, 29, 29, 0.2); }
+
+    .rank-badge { font-weight: bold; }
+    .rank-1 { color: var(--dama-gold-bright); }
+    .rank-2 { color: #e2e8f0; }
+    .rank-3 { color: #f97316; }
+
+    .strike-counter { display: inline-flex; gap: 4px; align-items: center; }
+    .strike-dot { width: 10px; height: 10px; border-radius: 50%; background: #374151; border: 1px solid #4b5563; }
+    .strike-dot.active { background: var(--dama-red); border-color: #ef4444; box-shadow: 0 0 8px var(--dama-red); }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(6px); }
+    .modal { background: #0f0305; border: 2px solid var(--dama-red); border-radius: 14px; padding: 26px; max-width: 440px; width: 90%; text-align: center; box-shadow: 0 0 35px rgba(220, 38, 38, 0.5); }
+    .modal h3 { color: var(--dama-red); margin-top: 0; font-size: 22px; }
+    
+    .hidden { display: none !important; }
+    .tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; font-weight: bold; }
+    .tag-live { background: rgba(22, 101, 52, 0.4); color: #4ade80; border: 1px solid #22c55e; }
+    .tag-done { background: rgba(55, 65, 81, 0.4); color: #9ca3af; border: 1px solid #4b5563; }
+
+    h3 { margin-top: 0; color: var(--text-light); font-size: 18px; border-bottom: 1px solid var(--border-red); padding-bottom: 8px; }
+
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; padding: 10px; gap: 14px; }
+      .server-tab { min-width: 80px; padding: 8px 4px; }
+      .server-tab .server-title { font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fair-Play Warning Modal -->
+  <div id="warningModal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>⚠️ FAIR PLAY WARNING</h3>
+      <p style="font-size: 15px; margin: 15px 0;">Tab switch or window change detected!</p>
+      <div style="background: rgba(30, 8, 12, 0.9); padding: 12px; border-radius: 8px; margin-bottom: 18px; border: 1px solid var(--panel-border);">
+        <span style="font-size: 13px; color: var(--text-muted);">Tab Switch Strikes:</span>
+        <div style="font-size: 22px; font-weight: bold; color: var(--dama-red); margin-top: 4px;" id="modalStrikeText">Strike 1 of 3</div>
+      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">
+        Leaving the game screen during an active match is strictly prohibited. Reaching <strong>3 strikes</strong> will instantly forfeit your match!
+      </p>
+      <button style="width: 100%;" onclick="dismissWarningModal()">I Understand & Return To Game</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Header Card -->
+    <div class="full header-card">
+      <div class="header-banner">
+        <h1>🔴 DICT DIGITAL DAMA SPORTSFEST 2026 ⬛</h1>
+        <p>Multi-Server Tournament Hub & Swiss / Knockout Championship</p>
+      </div>
+      <div class="header-status-bar">
+        <div class="row">
+          <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Format:</span>
+          <span id="currentSystemBadge" class="badge yellow">Swiss System</span>
+          <span id="currentPhaseBadge" class="badge">Round 1</span>
+        </div>
+        <div class="row">
+          <div id="statusBadge" class="badge green">🟢 Lobby Open</div>
+          <div id="roleBadge" class="badge">Not Signed In</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Server Selector Area -->
+    <div class="full">
+      <div class="server-bar">
+        <div class="server-tab active" id="serverTab-1" onclick="switchServer(1)">
+          <div class="server-title">SERVER 1</div>
+          <div class="server-status" id="serverStatus-1">Idle</div>
+        </div>
+        <div class="server-tab" id="serverTab-2" onclick="switchServer(2)">
+          <div class="server-title">SERVER 2</div>
+          <div class="server-status" id="serverStatus-2">Idle</div>
+        </div>
+        <div class="server-tab" id="serverTab-3" onclick="switchServer(3)">
+          <div class="server-title">SERVER 3</div>
+          <div class="server-status" id="serverStatus-3">Idle</div>
+        </div>
+        <div class="server-tab" id="serverTab-4" onclick="switchServer(4)">
+          <div class="server-title">SERVER 4</div>
+          <div class="server-status" id="serverStatus-4">Idle</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Match / Spectator / Queue Arena -->
+    <div id="mainArenaPanel" class="panel full hidden">
+      <!-- Player Lobby / Matchmaker View -->
+      <div id="lobby" style="text-align: center; padding: 15px 10px;">
+        <h3 style="margin-top:0; border:0;">Welcome, <span id="displayName" style="color:var(--dama-gold-bright);"></span>!</h3>
+        <p id="queueStatusText" style="color: var(--text-muted); max-width: 550px; margin: 0 auto 15px;">
+          Select a server above or queue up for your scheduled match.
+        </p>
+
+        <div id="playerActionArea" class="stack" style="max-width: 360px; margin: 0 auto;">
+          <button id="findMatchBtn" class="hidden" onclick="toggleMatchQueue()">🔍 Join Queue on <span id="activeServerBtnLabel">Server 1</span></button>
+        </div>
+      </div>
+
+      <!-- Live Dama Board Area -->
+      <div id="arena" class="arena hidden">
+        <div id="spectatorBanner" class="badge yellow hidden" style="margin-bottom: 5px;">
+          👁️ SPECTATING SERVER <span id="spectatorServerNum">1</span> — Live Match
+        </div>
+
+        <!-- Top Player Card -->
+        <div class="player-card">
+          <div class="player-info">
+            <span id="topPlayerName" class="player-name">Opponent</span>
+            <span id="topPlayerStatus" class="player-status-tag">Black Pieces</span>
+          </div>
+          <div id="topClock" class="clock">10:00</div>
+        </div>
+
+        <!-- Interactive Board -->
+        <div id="board-container">
+          <div id="board" class="dama-grid"></div>
+        </div>
+
+        <!-- Bottom Player Card -->
+        <div class="player-card">
+          <div class="player-info">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span id="bottomPlayerName" class="player-name">You</span>
+              
+              <!-- Draw Offer Prompt Banner -->
+              <div id="drawOfferPrompt" class="hidden" style="gap: 6px; align-items: center; background: rgba(180, 83, 9, 0.4); border: 1px solid var(--dama-gold); padding: 2px 8px; border-radius: 4px; font-size: 11px;">
+                <span>Draw offered?</span>
+                <button style="padding: 2px 6px; font-size: 10px;" onclick="acceptDraw()">Accept</button>
+                <button class="secondary" style="padding: 2px 6px; font-size: 10px;" onclick="declineDraw()">Decline</button>
+              </div>
+            </div>
+
+            <div id="strikeIndicator" class="strike-counter" title="Tab-Switch Strikes">
+              <span class="player-status-tag">FairPlay: </span>
+              <div class="strike-dot" id="dot1"></div>
+              <div class="strike-dot" id="dot2"></div>
+              <div class="strike-dot" id="dot3"></div>
+            </div>
+          </div>
+          <div id="bottomClock" class="clock">10:00</div>
+        </div>
+
+        <!-- Actions -->
+        <div class="row" style="margin-top: 5px;">
+          <button id="offerDrawBtn" class="secondary" onclick="offerDraw()">Offer Draw</button>
+          <button id="resignBtn" class="danger" onclick="resignMatch()">Resign Match</button>
+          <button id="exitSpectatorBtn" class="secondary hidden" onclick="closeSpectatorView()">Exit Spectator View</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 1: Player Sign-In -->
+    <div class="panel" id="authSection">
+      <h3>🔴 Player Registration & Access</h3>
+      <div id="authPanel" class="stack">
+        <div id="registrationOpenBox">
+          <label>Email Address (Unique Identity)</label>
+          <input id="playerEmail" type="email" placeholder="player@dict.gov.ph" maxlength="254" autocomplete="email" oninput="checkReturningPlayer(this.value)">
+          <label>Display / Player Name</label>
+          <input id="playerName" placeholder="Enter your full name or handle" maxlength="40" autocomplete="name">
+          <button style="margin-top: 10px; width: 100%;" onclick="registerPlayer()">Enter Tournament Lobby</button>
+        </div>
+
+        <div id="registrationClosedBox" class="hidden" style="background: rgba(69, 10, 10, 0.6); border: 1px solid var(--dama-red); padding: 14px; border-radius: 8px; text-align: center;">
+          <p style="color: #fca5a5; margin: 0 0 8px 0; font-weight: bold;">🔒 Registration Locked</p>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0;">Late sign-ins are closed. You may enter Spectator Mode to watch live games across all 4 servers.</p>
+          <button class="secondary" style="width: 100%;" onclick="enterSpectatorOnly()">Enter Spectator Mode</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Host Admin Controls & Tournament Systems -->
+    <div class="panel">
+      <h3>⚙ Host Admin Dashboard</h3>
+      <div class="stack">
+        <div id="hostLoginBox" class="stack" style="background:rgba(15, 3, 5, 0.9);padding:14px;border-radius:8px;border:1px solid var(--panel-border);">
+          <label>Host/Admin Password</label>
+          <input id="hostPasswordInput" type="password" placeholder="Enter host password" autocomplete="current-password">
+          <button class="secondary" onclick="unlockHostControls()">Unlock Host Controls</button>
+        </div>
+        
+        <div id="hostControlsLockedNotice" class="badge red">🔒 Host controls locked</div>
+        
+        <div id="hostControlsArea" class="stack hidden">
+          <!-- Tournament System Configuration -->
+          <label>Tournament Format / System</label>
+          <select id="tournamentSystemSelect" onchange="updateTournamentSystemSettings()">
+            <option value="Swiss">Swiss System (Points & Standings Pairings)</option>
+            <option value="Knockout-QF">Knockout Phase - Quarterfinals (Top 8)</option>
+            <option value="Knockout-SF">Knockout Phase - Semifinals (Top 4)</option>
+            <option value="Knockout-F">Knockout Phase - Finals / Championship</option>
+          </select>
+
+          <label>Active Tournament Phase / Round Tag</label>
+          <input id="tournamentRoundTag" type="text" value="Swiss Round 1" placeholder="e.g. Swiss Round 1, Day 2 Quarterfinals">
+
+          <label>Match Clock Standard</label>
+          <div style="background: rgba(30, 8, 12, 0.8); padding: 10px; border-radius: 6px; border: 1px solid var(--panel-border); text-align: center;">
+            <span style="font-weight: bold; color: var(--dama-gold-bright);">⏱ Fixed 10-Minute Timer (10:00 Per Player)</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px;">
+            <button class="secondary" onclick="toggleRegistrationLock()" id="lockToggleBtn">🔒 Lock Registration</button>
+            <button class="gold" onclick="updateTournamentSystemSettings()">💾 Save Tournament Settings</button>
+          </div>
+
+          <button onclick="kickoffTournament()" style="background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);">🚀 Kickoff Active Round</button>
+          
+          <div style="border-top: 1px solid var(--border-red); padding-top: 10px; margin-top: 5px;">
+            <button class="danger" style="width:100%" onclick="resetTournamentData()">⚠️ Reset All Tournament Data</button>
+          </div>
+          <button class="secondary" onclick="lockHostControls()">🔒 Lock Host Dashboard</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 3: Multi-Server Live Matches -->
+    <div class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin:0; border:0;">👁️ Live Server Matches (<span id="activeMatchCount">0</span>)</h3>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Server</th>
+              <th>White vs Black</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="liveMatchesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Panel 4: Ranked Leaderboard (Swiss & Knockout) -->
+    <div class="panel">
+      <h3 style="margin-top:0; margin-bottom: 6px;">🏆 Tournament Leaderboard</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px;">Swiss points dictate top seeds for Knockout Brackets.</p>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Player</th>
+              <th>Points</th>
+              <th>Played</th>
+              <th>W / D / L</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+  // ==========================================
+  // CUSTOM NATIVE DAMA ENGINE
+  // ==========================================
+  class DamaGame {
+    constructor() {
+      this.reset();
+    }
+
+    reset() {
+      // 8x8 grid: null = empty, 'w' = White piece, 'W' = White King (Dama), 'b' = Black piece, 'B' = Black King
+      this.board = Array(8).fill(null).map(() => Array(8).fill(null));
+      this.turn = 'w'; // White starts
+      this.setupBoard();
+    }
+
+    setupBoard() {
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if ((r + c) % 2 === 1) { // Dark squares only
+            if (r < 3) this.board[r][c] = 'b';
+            else if (r > 4) this.board[r][c] = 'w';
+          }
+        }
+      }
+    }
+
+    getStateString() {
+      return JSON.stringify({ board: this.board, turn: this.turn });
+    }
+
+    loadStateString(str) {
+      if (!str) return;
+      try {
+        const state = typeof str === 'string' ? JSON.parse(str) : str;
+        this.board = state.board;
+        this.turn = state.turn;
+      } catch (e) {
+        console.error("Invalid state string", e);
+      }
+    }
+
+    getPiece(r, c) {
+      if (r < 0 || r > 7 || c < 0 || c > 7) return null;
+      return this.board[r][c];
+    }
+
+    getValidMoves(r, c) {
+      const piece = this.getPiece(r, c);
+      if (!piece) return [];
+      const isWhite = piece.toLowerCase() === 'w';
+      if ((isWhite && this.turn !== 'w') || (!isWhite && this.turn !== 'b')) return [];
+
+      const jumps = this.getJumpsForPiece(r, c);
+      if (jumps.length > 0) return jumps;
+
+      return this.getSimpleMovesForPiece(r, c);
+    }
+
+    getSimpleMovesForPiece(r, c) {
+      const piece = this.board[r][c];
+      const isKing = piece === 'W' || piece === 'B';
+      const isWhite = piece.toLowerCase() === 'w';
+      const moves = [];
+
+      const directions = isKing 
+        ? [[-1,-1], [-1,1], [1,-1], [1,1]] 
+        : (isWhite ? [[-1,-1], [-1,1]] : [[1,-1], [1,1]]);
+
+      for (let [dr, dc] of directions) {
+        if (isKing) {
+          let nr = r + dr;
+          let nc = c + dc;
+          while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+            if (this.board[nr][nc] === null) {
+              moves.push({ from: [r, c], to: [nr, nc], captured: null });
+            } else {
+              break;
+            }
+            nr += dr;
+            nc += dc;
+          }
+        } else {
+          let nr = r + dr;
+          let nc = c + dc;
+          if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && this.board[nr][nc] === null) {
+            moves.push({ from: [r, c], to: [nr, nc], captured: null });
+          }
+        }
+      }
+      return moves;
+    }
+
+    getJumpsForPiece(r, c) {
+      const piece = this.board[r][c];
+      const isKing = piece === 'W' || piece === 'B';
+      const isWhite = piece.toLowerCase() === 'w';
+      const jumps = [];
+      const directions = [[-1,-1], [-1,1], [1,-1], [1,1]];
+
+      for (let [dr, dc] of directions) {
+        if (!isKing && !isWhite && dr < 0) continue; 
+        if (!isKing && isWhite && dr > 0) continue;  
+
+        if (isKing) {
+          let nr = r + dr;
+          let nc = c + dc;
+          let enemyPos = null;
+
+          while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+            const p = this.board[nr][nc];
+            if (p) {
+              if ((isWhite && p.toLowerCase() === 'w') || (!isWhite && p.toLowerCase() === 'b')) {
+                break; 
+              }
+              if (enemyPos) break; 
+              enemyPos = [nr, nc];
+            } else if (enemyPos) {
+              jumps.push({ from: [r, c], to: [nr, nc], captured: enemyPos });
+            }
+            nr += dr;
+            nc += dc;
+          }
+        } else {
+          let midR = r + dr;
+          let midC = c + dc;
+          let landR = r + (dr * 2);
+          let landC = c + (dc * 2);
+
+          if (landR >= 0 && landR < 8 && landC >= 0 && landC < 8) {
+            const midPiece = this.board[midR][midC];
+            const landPiece = this.board[landR][landC];
+
+            if (midPiece && landPiece === null) {
+              const isMidEnemy = isWhite ? midPiece.toLowerCase() === 'b' : midPiece.toLowerCase() === 'w';
+              if (isMidEnemy) {
+                jumps.push({ from: [r, c], to: [landR, landC], captured: [midR, midC] });
+              }
+            }
+          }
+        }
+      }
+      return jumps;
+    }
+
+    makeMove(from, to) {
+      const moves = this.getValidMoves(from[0], from[1]);
+      const validMove = moves.find(m => m.to[0] === to[0] && m.to[1] === to[1]);
+      if (!validMove) return false;
+
+      let piece = this.board[from[0]][from[1]];
+      this.board[from[0]][from[1]] = null;
+
+      if (validMove.captured) {
+        this.board[validMove.captured[0]][validMove.captured[1]] = null;
+      }
+
+      if (piece === 'w' && to[0] === 0) piece = 'W';
+      if (piece === 'b' && to[0] === 7) piece = 'B';
+
+      this.board[to[0]][to[1]] = piece;
+
+      let canDoubleJump = false;
+      if (validMove.captured) {
+        const subsequentJumps = this.getJumpsForPiece(to[0], to[1]);
+        if (subsequentJumps.length > 0) {
+          canDoubleJump = true;
+        }
+      }
+
+      if (!canDoubleJump) {
+        this.turn = this.turn === 'w' ? 'b' : 'w';
+      }
+
+      return true;
+    }
+
+    getGameStatus() {
+      let whiteCount = 0;
+      let blackCount = 0;
+      let whiteHasMoves = false;
+      let blackHasMoves = false;
+
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          const p = this.board[r][c];
+          if (p) {
+            if (p.toLowerCase() === 'w') {
+              whiteCount++;
+              if (this.turn === 'w' && this.getValidMoves(r, c).length > 0) whiteHasMoves = true;
+            } else {
+              blackCount++;
+              if (this.turn === 'b' && this.getValidMoves(r, c).length > 0) blackHasMoves = true;
+            }
+          }
+        }
+      }
+
+      if (whiteCount === 0) return { over: true, result: '0-1', winner: 'Black' };
+      if (blackCount === 0) return { over: true, result: '1-0', winner: 'White' };
+
+      if (this.turn === 'w' && !whiteHasMoves) return { over: true, result: '0-1', winner: 'Black' };
+      if (this.turn === 'b' && !blackHasMoves) return { over: true, result: '1-0', winner: 'Black' };
+
+      return { over: false };
+    }
+  }
+
+  // ==========================================
+  // FIREBASE CONFIGURATION & INITIALIZATION
+  // ==========================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyAXJBNjmDTconXnH5o-zRfznTfrzaPherA",
+    authDomain: "dict-chess-sportsfest-2026.firebaseapp.com",
+    databaseURL: "https://dict-chess-sportsfest-2026-default-rtdb.firebaseio.com",
+    projectId: "dict-chess-sportsfest-2026",
+    storageBucket: "dict-chess-sportsfest-2026.firebasestorage.app",
+    messagingSenderId: "8514780442",
+    appId: "1:8514780442:web:cc462ee088e626d564c0a3"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ==========================================
+  // GLOBAL STATE VARIABLES
+  // ==========================================
+  let playerId = null;
+  let playerNameStr = '';
+  let isSpectator = false;
+  let spectatingMatchId = null;
+
+  let activeServerId = 1; // 1, 2, 3, or 4
+  let activeMatchId = null;
+  let activeMatchData = null;
+  let damaGame = new DamaGame();
+  let playerColor = 'white';
+  let selectedPos = null;
+  let timerInterval = null;
+  let gameOverCountdownInterval = null;
+  let lastClockTickAt = 0;
+  let matchmakingInProgress = false;
+
+  let hostControlsUnlocked = false;
+  const HOST_ADMIN_PASSWORD = '1101';
+
+  let tabStrikes = 0;
+  let isTournamentStarted = false;
+  let isRegistrationLocked = false;
+  let isGameOverHandled = false;
+
+  let allPlayers = {};
+  let allMatches = {};
+  let globalSettings = {
+    system: 'Swiss',
+    roundTag: 'Swiss Round 1'
+  };
+
+  // ==========================================
+  // MULTI-SERVER SELECTION LOGIC
+  // ==========================================
+  function switchServer(serverNum) {
+    if (activeServerId === serverNum && !isSpectator) return;
+    
+    activeServerId = serverNum;
+    
+    // Update UI tabs
+    for (let i = 1; i <= 4; i++) {
+      const tab = document.getElementById(`serverTab-${i}`);
+      if (tab) {
+        if (i === serverNum) tab.classList.add('active');
+        else tab.classList.remove('active');
+      }
+    }
+
+    document.getElementById('activeServerBtnLabel').textContent = `Server ${serverNum}`;
+    
+    // If spectating or changing server, refresh active match check
+    if (isSpectator) {
+      const serverMatchEntry = Object.entries(allMatches).find(([id, m]) => m.serverId == serverNum && m.status === 'Live');
+      if (serverMatchEntry) {
+        spectateMatch(serverMatchEntry[0]);
+      } else {
+        closeSpectatorView();
+      }
+    } else {
+      checkPlayerMatchAssignment();
+    }
+    
+    updatePlayerLobbyUI();
+  }
+
+  function updateServerStatusBadges() {
+    for (let i = 1; i <= 4; i++) {
+      const badge = document.getElementById(`serverStatus-${i}`);
+      if (!badge) continue;
+
+      const serverMatch = Object.values(allMatches).find(m => m.serverId == i && m.status === 'Live');
+      if (serverMatch) {
+        badge.textContent = `LIVE: ${serverMatch.whiteName.split(' ')[0]} vs ${serverMatch.blackName.split(' ')[0]}`;
+        badge.style.color = '#4ade80';
+      } else {
+        badge.textContent = 'Idle / Open';
+        badge.style.color = 'var(--text-muted)';
+      }
+    }
+  }
+
+  // ==========================================
+  // REALTIME DATABASE LISTENERS
+  // ==========================================
+  db.ref('settings').on('value', snapshot => {
+    globalSettings = snapshot.val() || { system: 'Swiss', roundTag: 'Swiss Round 1' };
+    isRegistrationLocked = !!globalSettings.registrationLocked;
+    isTournamentStarted = !!globalSettings.tournamentStarted;
+    
+    document.getElementById('currentSystemBadge').textContent = globalSettings.system || 'Swiss';
+    document.getElementById('currentPhaseBadge').textContent = globalSettings.roundTag || 'Round 1';
+    
+    if (document.getElementById('tournamentSystemSelect')) {
+      document.getElementById('tournamentSystemSelect').value = globalSettings.system || 'Swiss';
+    }
+    if (document.getElementById('tournamentRoundTag')) {
+      document.getElementById('tournamentRoundTag').value = globalSettings.roundTag || 'Swiss Round 1';
+    }
+
+    updateSystemStatusUI();
+    updatePlayerLobbyUI();
+  });
+
+  const playersRef = db.ref('players');
+  playersRef.on('child_added', snapshot => {
+    allPlayers[snapshot.key] = snapshot.val() || {};
+    updateLeaderboard();
+    updatePlayerLobbyUI();
+  });
+  playersRef.on('child_changed', snapshot => {
+    allPlayers[snapshot.key] = snapshot.val() || {};
+    updateLeaderboard();
+    updatePlayerLobbyUI();
+    if (snapshot.key === playerId && allPlayers[playerId]?.status === 'searching') {
+      attemptAutoMatchmaking();
+    }
+  });
+  playersRef.on('child_removed', snapshot => {
+    delete allPlayers[snapshot.key];
+    updateLeaderboard();
+    updatePlayerLobbyUI();
+  });
+
+  const matchesRef = db.ref('matches');
+  function handleMatchRecordChange(snapshot) {
+    allMatches[snapshot.key] = snapshot.val() || {};
+    renderMatchesList();
+    updateLeaderboard();
+    updateServerStatusBadges();
+
+    if (isSpectator && spectatingMatchId && allMatches[spectatingMatchId]) {
+      syncSpectatorBoard(allMatches[spectatingMatchId]);
+    } else {
+      checkPlayerMatchAssignment();
+    }
+  }
+  matchesRef.on('child_added', handleMatchRecordChange);
+  matchesRef.on('child_changed', handleMatchRecordChange);
+  matchesRef.on('child_removed', snapshot => {
+    delete allMatches[snapshot.key];
+    renderMatchesList();
+    updateLeaderboard();
+    updateServerStatusBadges();
+    if (activeMatchId === snapshot.key) returnToLobby();
+  });
+
+  // ==========================================
+  // FAIR PLAY PROTECTION (ALT-TAB PROTECTION)
+  // ==========================================
+  document.addEventListener('visibilitychange', () => {
+    if (!playerId || isSpectator || !activeMatchId || !activeMatchData) return;
+    if (activeMatchData.status !== 'Live') return;
+
+    if (document.hidden) {
+      tabStrikes++;
+      db.ref(`matches/${activeMatchId}/${playerColor}Strikes`).set(tabStrikes);
+
+      if (tabStrikes >= 3) {
+        const winnerResult = playerColor === 'white' ? '0-1' : '1-0';
+        db.ref(`matches/${activeMatchId}`).update({
+          status: 'Completed',
+          result: winnerResult,
+          forfeitReason: `${playerNameStr} Disqualified (3 Tab Switches)`
+        });
+        alert('❌ DISQUALIFIED: You have reached 3 tab-switch strikes. Match forfeited.');
+        dismissWarningModal();
+      } else {
+        document.getElementById('modalStrikeText').textContent = `Strike ${tabStrikes} of 3`;
+        document.getElementById('warningModal').classList.remove('hidden');
+        updateStrikeDotsUI(tabStrikes);
+      }
+    }
+  });
+
+  function dismissWarningModal() {
+    document.getElementById('warningModal').classList.add('hidden');
+  }
+
+  function updateStrikeDotsUI(strikes) {
+    document.getElementById('dot1').className = 'strike-dot' + (strikes >= 1 ? ' active' : '');
+    document.getElementById('dot2').className = 'strike-dot' + (strikes >= 2 ? ' active' : '');
+    document.getElementById('dot3').className = 'strike-dot' + (strikes >= 3 ? ' active' : '');
+  }
+
+  // ==========================================
+  // RETURNING PLAYER AUTO-FILL & ENTRY
+  // ==========================================
+  function checkReturningPlayer(emailVal) {
+    const email = emailVal.trim().toLowerCase();
+    if (!email) return;
+
+    const existingPlayerKey = Object.keys(allPlayers).find(
+      id => (allPlayers[id].email || '').toLowerCase() === email
+    );
+
+    if (existingPlayerKey) {
+      const existingPlayer = allPlayers[existingPlayerKey];
+      document.getElementById('playerName').value = existingPlayer.name;
+    }
+  }
+
+  function registerPlayer() {
+    const nameInput = document.getElementById('playerName');
+    const name = nameInput.value.trim();
+    const emailInput = document.getElementById('playerEmail');
+    const email = emailInput.value.trim().toLowerCase();
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return alert('Please enter a valid email address.');
+    }
+    if (!name) return alert('Please enter a display name.');
+
+    if (isRegistrationLocked) {
+      return alert('Registration is currently locked by the host.');
+    }
+
+    const existingId = Object.keys(allPlayers).find(
+      id => (allPlayers[id].email || '').toLowerCase() === email
+    );
+
+    if (existingId) {
+      playerId = existingId;
+      playerNameStr = name;
+      db.ref('players/' + playerId).update({ name: name, status: 'idle', online: true });
+    } else {
+      playerNameStr = name;
+      playerId = 'player_' + Math.random().toString(36).substr(2, 9);
+      db.ref('players/' + playerId).set({
+        name: name,
+        email: email,
+        status: 'idle',
+        online: true,
+        joinedAt: Date.now()
+      });
+    }
+
+    isSpectator = false;
+
+    const playerRef = db.ref('players/' + playerId);
+    playerRef.child('online').onDisconnect().set(false);
+    playerRef.child('online').set(true);
+
+    document.getElementById('displayName').textContent = playerNameStr;
+    document.getElementById('roleBadge').textContent = 'Player: ' + playerNameStr;
+    document.getElementById('roleBadge').className = 'badge green';
+    document.getElementById('mainArenaPanel').classList.remove('hidden');
+    document.getElementById('authSection').classList.add('hidden');
+
+    updatePlayerLobbyUI();
+  }
+
+  function enterSpectatorOnly() {
+    isSpectator = true;
+    playerId = null;
+    
+    document.getElementById('displayName').textContent = 'Guest Spectator';
+    document.getElementById('roleBadge').textContent = '👁️ Spectator Mode';
+    document.getElementById('roleBadge').className = 'badge yellow';
+    document.getElementById('mainArenaPanel').classList.remove('hidden');
+    document.getElementById('authSection').classList.add('hidden');
+    document.getElementById('playerActionArea').classList.add('hidden');
+    document.getElementById('queueStatusText').textContent = 'Select a server above to view live matches.';
+  }
+
+  function updateSystemStatusUI() {
+    const statusBadge = document.getElementById('statusBadge');
+    const lockToggleBtn = document.getElementById('lockToggleBtn');
+    const openBox = document.getElementById('registrationOpenBox');
+    const closedBox = document.getElementById('registrationClosedBox');
+
+    if (isRegistrationLocked) {
+      if (lockToggleBtn) {
+        lockToggleBtn.textContent = '🔓 Unlock Registration';
+      }
+      statusBadge.textContent = '🔒 Registration Locked';
+      statusBadge.className = 'badge red';
+      openBox.classList.add('hidden');
+      closedBox.classList.remove('hidden');
+    } else {
+      if (lockToggleBtn) {
+        lockToggleBtn.textContent = '🔒 Lock Registration';
+      }
+      statusBadge.textContent = '🟢 Lobby Open';
+      statusBadge.className = 'badge green';
+      openBox.classList.remove('hidden');
+      closedBox.classList.add('hidden');
+    }
+  }
+
+  function updatePlayerLobbyUI() {
+    if (!playerId || isSpectator) return;
+
+    const findBtn = document.getElementById('findMatchBtn');
+    const statusTxt = document.getElementById('queueStatusText');
+
+    if (!isTournamentStarted) {
+      findBtn.classList.add('hidden');
+      statusTxt.textContent = '⏳ The tournament host has not started this round yet. Please wait...';
+    } else {
+      findBtn.classList.remove('hidden');
+      const playerStatus = allPlayers[playerId]?.status;
+      if (playerStatus === 'searching') {
+        findBtn.textContent = `⏳ Searching Queue on Server ${activeServerId}...`;
+        statusTxt.textContent = `Queued up on Server ${activeServerId}. Waiting for an available opponent...`;
+      } else {
+        findBtn.textContent = `🔍 Queue Opponent (Server ${activeServerId})`;
+        statusTxt.textContent = `Ready for ${globalSettings.roundTag || 'Round'}? Queue on Server ${activeServerId} to play.`;
+      }
+    }
+  }
+
+  // ==========================================
+  // AUTOMATED MATCHMAKING & QUEUE PER SERVER
+  // ==========================================
+  function toggleMatchQueue() {
+    if (!playerId || isSpectator) return;
+    if (!isTournamentStarted) return alert('The host has not started this round yet.');
+
+    const currentStatus = allPlayers[playerId]?.status;
+
+    if (currentStatus === 'searching') {
+      db.ref('players/' + playerId).update({ status: 'idle', serverQueue: null });
+    } else {
+      db.ref('players/' + playerId).update({ status: 'searching', serverQueue: activeServerId });
+      attemptAutoMatchmaking();
+    }
+    updatePlayerLobbyUI();
+  }
+
+  function attemptAutoMatchmaking() {
+    if (matchmakingInProgress || !isTournamentStarted || !playerId) return;
+    if (allPlayers[playerId]?.status !== 'searching') return;
+
+    const myServer = allPlayers[playerId]?.serverQueue || activeServerId;
+
+    // Check if server already has an active live match
+    const existingLive = Object.values(allMatches).find(m => m.serverId == myServer && m.status === 'Live');
+    if (existingLive) {
+      return; // Server busy
+    }
+
+    const opponentEntry = Object.entries(allPlayers).find(([id, player]) =>
+      id !== playerId && player && player.online === true && player.status === 'searching' && player.serverQueue == myServer
+    );
+    if (!opponentEntry) return;
+
+    const [opponentId, opponent] = opponentEntry;
+    const matchId = 'match_' + db.ref('matches').push().key;
+    const now = Date.now();
+    const tenMinutesInSeconds = 600; // 10:00 timer standard
+
+    const initialDama = new DamaGame();
+    const matchPayload = {
+      serverId: myServer,
+      whiteId: opponentId,
+      whiteName: opponent.name || 'Player',
+      blackId: playerId,
+      blackName: playerNameStr || 'Player',
+      gameState: initialDama.getStateString(),
+      whiteTime: tenMinutesInSeconds,
+      blackTime: tenMinutesInSeconds,
+      status: 'Live',
+      whiteStrikes: 0,
+      blackStrikes: 0,
+      drawOfferedBy: null,
+      createdAt: now,
+      lastMoveAt: now,
+      roundTag: globalSettings.roundTag || 'Phase Match'
+    };
+
+    matchmakingInProgress = true;
+    const updates = {};
+    updates['/matches/' + matchId] = matchPayload;
+    updates['/players/' + playerId + '/status'] = 'in-game';
+    updates['/players/' + opponentId + '/status'] = 'in-game';
+    
+    db.ref().update(updates, error => {
+      matchmakingInProgress = false;
+      if (error) {
+        console.error('Matchmaking failed:', error);
+        db.ref('players/' + playerId).update({ status: 'searching' });
+      }
+    });
+  }
+
+  function checkPlayerMatchAssignment() {
+    if (!playerId || isSpectator) return;
+
+    let assignedMatch = null;
+    let matchId = null;
+
+    for (let id in allMatches) {
+      if ((allMatches[id].whiteId === playerId || allMatches[id].blackId === playerId) && allMatches[id].status === 'Live') {
+        assignedMatch = allMatches[id];
+        matchId = id;
+        break;
+      }
+    }
+
+    if (assignedMatch) {
+      if (assignedMatch.serverId) {
+        activeServerId = assignedMatch.serverId;
+        for (let i = 1; i <= 4; i++) {
+          const tab = document.getElementById(`serverTab-${i}`);
+          if (tab) {
+            if (i == activeServerId) tab.classList.add('active');
+            else tab.classList.remove('active');
+          }
+        }
+      }
+
+      if (!activeMatchId || activeMatchId !== matchId) {
+        setupMatch(matchId, assignedMatch);
+      } else {
+        syncGameState(assignedMatch);
+      }
+    } else if (activeMatchId) {
+      const finishedMatch = allMatches[activeMatchId];
+      if (finishedMatch && finishedMatch.status !== 'Live') {
+        if (!isGameOverHandled) {
+          isGameOverHandled = true;
+          let message = '🏁 MATCH ENDED';
+          if (finishedMatch.result === '1-0') message = '🏆 White wins!';
+          else if (finishedMatch.result === '0-1') message = '🏆 Black wins!';
+          else if (finishedMatch.result === '1/2-1/2') message = '🤝 Game drawn!';
+          if (finishedMatch.forfeitReason) message += ' ' + finishedMatch.forfeitReason;
+          showGameOverBannerAndRedirect(message);
+        }
+      } else {
+        returnToLobby();
+      }
+    }
+  }
+
+  function returnToLobby() {
+    activeMatchId = null;
+    tabStrikes = 0;
+    isGameOverHandled = false;
+    selectedPos = null;
+    if (timerInterval) clearInterval(timerInterval);
+    if (gameOverCountdownInterval) clearInterval(gameOverCountdownInterval);
+    gameOverCountdownInterval = null;
+    
+    const banner = document.getElementById('tempGameOverBanner');
+    if (banner && banner.parentNode) banner.parentNode.removeChild(banner);
+
+    document.getElementById('drawOfferPrompt').classList.add('hidden');
+    const offerBtn = document.getElementById('offerDrawBtn');
+    offerBtn.textContent = 'Offer Draw';
+    offerBtn.disabled = false;
+
+    if (playerId) {
+      db.ref('players/' + playerId).update({ status: 'idle', serverQueue: null });
+    }
+
+    document.getElementById('arena').classList.add('hidden');
+    document.getElementById('lobby').classList.remove('hidden');
+    updatePlayerLobbyUI();
+  }
+
+  // ==========================================
+  // GAMEPLAY ENGINE & BOARD RENDER
+  // ==========================================
+  function setupMatch(id, matchData) {
+    activeMatchId = id;
+    activeMatchData = matchData;
+    spectatingMatchId = null;
+    playerColor = matchData.whiteId === playerId ? 'white' : 'black';
+    tabStrikes = 0;
+    isGameOverHandled = false;
+    lastClockTickAt = Date.now();
+    selectedPos = null;
+    updateStrikeDotsUI(0);
+
+    document.getElementById('lobby').classList.add('hidden');
+    document.getElementById('arena').classList.remove('hidden');
+    document.getElementById('spectatorBanner').classList.add('hidden');
+    document.getElementById('resignBtn').classList.remove('hidden');
+    document.getElementById('offerDrawBtn').classList.remove('hidden');
+    document.getElementById('exitSpectatorBtn').classList.add('hidden');
+
+    document.getElementById('topPlayerName').textContent = playerColor === 'white' ? matchData.blackName : matchData.whiteName;
+    document.getElementById('topPlayerStatus').textContent = playerColor === 'white' ? 'Black' : 'White';
+    document.getElementById('bottomPlayerName').textContent = playerColor === 'white' ? matchData.whiteName : matchData.blackName;
+
+    damaGame.loadStateString(matchData.gameState);
+    renderDamaBoard();
+    startClock();
+    syncGameState(matchData);
+  }
+
+  function renderDamaBoard() {
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+
+    const isFlipped = playerColor === 'black';
+
+    for (let rIdx = 0; rIdx < 8; rIdx++) {
+      for (let cIdx = 0; cIdx < 8; cIdx++) {
+        const r = isFlipped ? 7 - rIdx : rIdx;
+        const c = isFlipped ? 7 - cIdx : cIdx;
+        
+        const isDark = (r + c) % 2 === 1;
+        const sq = document.createElement('div');
+        sq.className = `dama-sq ${isDark ? 'dark' : 'light'}`;
+        sq.dataset.r = r;
+        sq.dataset.c = c;
+
+        if (selectedPos && selectedPos[0] === r && selectedPos[1] === c) {
+          sq.classList.add('selected');
+        }
+
+        if (selectedPos) {
+          const validMoves = damaGame.getValidMoves(selectedPos[0], selectedPos[1]);
+          if (validMoves.some(m => m.to[0] === r && m.to[1] === c)) {
+            sq.classList.add('valid-move');
+          }
+        }
+
+        const piece = damaGame.board[r][c];
+        if (piece) {
+          const pEl = document.createElement('div');
+          const isWhitePiece = piece.toLowerCase() === 'w';
+          const isKing = piece === 'W' || piece === 'B';
+          pEl.className = `piece ${isWhitePiece ? 'white-piece' : 'black-piece'} ${isKing ? 'king' : ''}`;
+          sq.appendChild(pEl);
+        }
+
+        sq.onclick = () => handleSquareClick(r, c);
+        boardEl.appendChild(sq);
+      }
+    }
+  }
+
+  function handleSquareClick(r, c) {
+    if (isSpectator || activeMatchData?.status !== 'Live') return;
+
+    const currentTurn = damaGame.turn;
+    if ((currentTurn === 'w' && playerColor !== 'white') || (currentTurn === 'b' && playerColor !== 'black')) return;
+
+    const clickedPiece = damaGame.getPiece(r, c);
+
+    if (selectedPos === null) {
+      if (clickedPiece && ((currentTurn === 'w' && clickedPiece.toLowerCase() === 'w') || (currentTurn === 'b' && clickedPiece.toLowerCase() === 'b'))) {
+        selectedPos = [r, c];
+        renderDamaBoard();
+      }
+      return;
+    }
+
+    if (selectedPos[0] === r && selectedPos[1] === c) {
+      selectedPos = null;
+      renderDamaBoard();
+      return;
+    }
+
+    if (clickedPiece && ((currentTurn === 'w' && clickedPiece.toLowerCase() === 'w') || (currentTurn === 'b' && clickedPiece.toLowerCase() === 'b'))) {
+      selectedPos = [r, c];
+      renderDamaBoard();
+      return;
+    }
+
+    const from = selectedPos;
+    const moved = damaGame.makeMove(from, [r, c]);
+    selectedPos = null;
+
+    if (moved) {
+      renderDamaBoard();
+
+      db.ref('matches/' + activeMatchId).update({
+        gameState: damaGame.getStateString(),
+        whiteTime: activeMatchData.whiteTime,
+        blackTime: activeMatchData.blackTime,
+        lastMoveAt: Date.now(),
+        lastMoveBy: playerId,
+        drawOfferedBy: null
+      });
+
+      checkGameOver();
+    } else {
+      renderDamaBoard();
+    }
+  }
+
+  function syncGameState(matchData) {
+    activeMatchData = matchData;
+    if (matchData.gameState && damaGame.getStateString() !== matchData.gameState) {
+      damaGame.loadStateString(matchData.gameState);
+      renderDamaBoard();
+      checkGameOver();
+    }
+
+    const promptEl = document.getElementById('drawOfferPrompt');
+    const offerBtn = document.getElementById('offerDrawBtn');
+
+    if (matchData.drawOfferedBy) {
+      if (matchData.drawOfferedBy !== playerColor) {
+        promptEl.classList.remove('hidden');
+        offerBtn.textContent = 'Offer Draw';
+        offerBtn.disabled = false;
+      } else {
+        promptEl.classList.add('hidden');
+        offerBtn.textContent = 'Draw Offered';
+        offerBtn.disabled = true;
+      }
+    } else {
+      promptEl.classList.add('hidden');
+      offerBtn.textContent = 'Offer Draw';
+      offerBtn.disabled = false;
+    }
+  }
+
+  function startClock() {
+    if (timerInterval) clearInterval(timerInterval);
+    lastClockTickAt = Date.now();
+
+    timerInterval = setInterval(() => {
+      if (!activeMatchData || !activeMatchId || activeMatchData.status !== 'Live') {
+        lastClockTickAt = Date.now();
+        return;
+      }
+
+      const now = Date.now();
+      const elapsed = Math.max(0, Math.floor((now - lastClockTickAt) / 1000));
+      if (elapsed < 1) return;
+      lastClockTickAt += elapsed * 1000;
+
+      if (damaGame.turn === 'w') {
+        activeMatchData.whiteTime = Math.max(0, Number(activeMatchData.whiteTime || 0) - elapsed);
+        if (activeMatchData.whiteTime === 0 && playerColor === 'black' && !isGameOverHandled) {
+          isGameOverHandled = true;
+          db.ref('matches/' + activeMatchId).update({ status: 'Completed', result: '0-1' });
+          showGameOverBannerAndRedirect('⏱️ TIME OUT! Black wins!');
+        }
+      } else {
+        activeMatchData.blackTime = Math.max(0, Number(activeMatchData.blackTime || 0) - elapsed);
+        if (activeMatchData.blackTime === 0 && playerColor === 'white' && !isGameOverHandled) {
+          isGameOverHandled = true;
+          db.ref('matches/' + activeMatchId).update({ status: 'Completed', result: '1-0' });
+          showGameOverBannerAndRedirect('⏱️ TIME OUT! White wins!');
+        }
+      }
+
+      renderClocks();
+    }, 250);
+  }
+
+  function renderClocks() {
+    const isWhite = playerColor === 'white';
+    const topSec = isWhite ? activeMatchData.blackTime : activeMatchData.whiteTime;
+    const botSec = isWhite ? activeMatchData.whiteTime : activeMatchData.blackTime;
+
+    document.getElementById('topClock').textContent = formatTime(topSec);
+    document.getElementById('bottomClock').textContent = formatTime(botSec);
+
+    const isWhiteTurn = damaGame.turn === 'w';
+    
+    const topClockEl = document.getElementById('topClock');
+    const botClockEl = document.getElementById('bottomClock');
+
+    topClockEl.className = 'clock ' + ((isWhite !== isWhiteTurn) ? 'active' : '') + (topSec <= 60 ? ' low' : '');
+    botClockEl.className = 'clock ' + ((isWhite === isWhiteTurn) ? 'active' : '') + (botSec <= 60 ? ' low' : '');
+  }
+
+  function formatTime(s) {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec < 10 ? '0' : ''}${sec}`;
+  }
+
+  function checkGameOver() {
+    if (isGameOverHandled) return;
+
+    const status = damaGame.getGameStatus();
+    if (status.over) {
+      isGameOverHandled = true;
+      db.ref('matches/' + activeMatchId).update({ status: 'Completed', result: status.result });
+      showGameOverBannerAndRedirect(`🏆 ${status.winner.toUpperCase()} WINS!`);
+    }
+  }
+
+  function showGameOverBannerAndRedirect(message) {
+    if (isSpectator) return;
+
+    const boardEl = document.getElementById('board-container');
+    let banner = document.getElementById('tempGameOverBanner');
+    
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.className = 'game-over-banner';
+      banner.id = 'tempGameOverBanner';
+      boardEl.appendChild(banner);
+    }
+
+    if (gameOverCountdownInterval) clearInterval(gameOverCountdownInterval);
+    let secondsLeft = 5;
+    banner.innerHTML = `
+      <h3 style="margin:0 0 6px; color: var(--dama-gold-bright); font-size: 20px;">${message}</h3>
+      <p style="margin:0; font-size:13px; color: var(--text-light);">Returning to lobby in <strong><span id="bannerCountdown">5</span>s</strong>...</p>
+    `;
+
+    gameOverCountdownInterval = setInterval(() => {
+      secondsLeft--;
+      const countEl = document.getElementById('bannerCountdown');
+      if (countEl) countEl.textContent = secondsLeft;
+
+      if (secondsLeft <= 0) {
+        clearInterval(gameOverCountdownInterval);
+        gameOverCountdownInterval = null;
+        returnToLobby();
+      }
+    }, 1000);
+  }
+
+  function resignMatch() {
+    if (!confirm('Are you sure you want to resign this match?')) return;
+    const result = playerColor === 'white' ? '0-1' : '1-0';
+    db.ref('matches/' + activeMatchId).update({ status: 'Completed', result: result, forfeitReason: `${playerNameStr} Resigned` });
+  }
+
+  // ==========================================
+  // DRAW OFFER LOGIC
+  // ==========================================
+  function offerDraw() {
+    if (!activeMatchId || !activeMatchData || activeMatchData.status !== 'Live') return;
+
+    const currentOffer = activeMatchData.drawOfferedBy;
+    if (currentOffer) {
+      if (currentOffer === playerColor) {
+        alert('You have already offered a draw.');
+      } else {
+        acceptDraw();
+      }
+      return;
+    }
+
+    activeMatchData.drawOfferedBy = playerColor;
+    db.ref(`matches/${activeMatchId}`).update({
+      drawOfferedBy: playerColor
+    });
+
+    const btn = document.getElementById('offerDrawBtn');
+    btn.textContent = 'Draw Offered';
+    btn.disabled = true;
+  }
+
+  function acceptDraw() {
+    if (!activeMatchId || activeMatchData?.status !== 'Live') return;
+
+    db.ref(`matches/${activeMatchId}`).update({
+      status: 'Completed',
+      result: '1/2-1/2',
+      drawOfferedBy: null
+    });
+  }
+
+  function declineDraw() {
+    if (!activeMatchId) return;
+
+    db.ref(`matches/${activeMatchId}`).update({
+      drawOfferedBy: null
+    });
+  }
+
+  // ==========================================
+  // LIVE SPECTATOR MODE ACROSS SERVERS
+  // ==========================================
+  function spectateMatch(matchId) {
+    spectatingMatchId = matchId;
+    const matchData = allMatches[matchId];
+    if (!matchData) return;
+
+    document.getElementById('lobby').classList.add('hidden');
+    document.getElementById('arena').classList.remove('hidden');
+    document.getElementById('spectatorBanner').classList.remove('hidden');
+    document.getElementById('spectatorServerNum').textContent = matchData.serverId || '1';
+    document.getElementById('resignBtn').classList.add('hidden');
+    document.getElementById('offerDrawBtn').classList.add('hidden');
+    document.getElementById('exitSpectatorBtn').classList.remove('hidden');
+
+    document.getElementById('topPlayerName').textContent = matchData.blackName;
+    document.getElementById('topPlayerStatus').textContent = 'Black';
+    document.getElementById('bottomPlayerName').textContent = matchData.whiteName;
+
+    damaGame.loadStateString(matchData.gameState);
+    renderDamaBoard();
+    syncSpectatorBoard(matchData);
+  }
+
+  function syncSpectatorBoard(matchData) {
+    if (matchData.gameState && damaGame.getStateString() !== matchData.gameState) {
+      damaGame.loadStateString(matchData.gameState);
+      renderDamaBoard();
+    }
+
+    document.getElementById('topClock').textContent = formatTime(matchData.blackTime);
+    document.getElementById('bottomClock').textContent = formatTime(matchData.whiteTime);
+
+    const isWhiteTurn = damaGame.turn === 'w';
+    document.getElementById('topClock').className = 'clock ' + (!isWhiteTurn ? 'active' : '');
+    document.getElementById('bottomClock').className = 'clock ' + (isWhiteTurn ? 'active' : '');
+  }
+
+  function closeSpectatorView() {
+    spectatingMatchId = null;
+    document.getElementById('offerDrawBtn').classList.remove('hidden');
+    document.getElementById('arena').classList.add('hidden');
+    document.getElementById('lobby').classList.remove('hidden');
+  }
+
+  function renderMatchesList() {
+    const tbody = document.getElementById('liveMatchesTable');
+    const keys = Object.keys(allMatches);
+    let activeCount = 0;
+
+    tbody.innerHTML = keys.map(id => {
+      const m = allMatches[id];
+      if (m.status === 'Live') activeCount++;
+
+      const statusTag = m.status === 'Live' ? '<span class="tag tag-live">● LIVE</span>' : `<span class="tag tag-done">${m.result || 'DONE'}</span>`;
+      
+      return `<tr>
+        <td><strong>Server ${m.serverId || 1}</strong></td>
+        <td><strong>${escapeHtml(m.whiteName)}</strong> vs <strong>${escapeHtml(m.blackName)}</strong></td>
+        <td>${statusTag}</td>
+        <td>
+          <button class="secondary" style="padding: 4px 8px; font-size: 11px;" onclick="spectateMatch('${id}')">👁️ Watch</button>
+        </td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" style="color:var(--text-muted); text-align:center;">No matches recorded yet.</td></tr>';
+
+    document.getElementById('activeMatchCount').textContent = activeCount;
+  }
+
+  // ==========================================
+  // HOST ACCESS & TOURNAMENT SYSTEMS
+  // ==========================================
+  function unlockHostControls() {
+    const entered = document.getElementById('hostPasswordInput').value;
+    if (entered !== HOST_ADMIN_PASSWORD) {
+      alert('Incorrect host/admin password.');
+      document.getElementById('hostPasswordInput').value = '';
+      return;
+    }
+    hostControlsUnlocked = true;
+    document.getElementById('hostControlsArea').classList.remove('hidden');
+    document.getElementById('hostControlsLockedNotice').classList.add('hidden');
+    document.getElementById('hostLoginBox').classList.add('hidden');
+    document.getElementById('roleBadge').textContent = 'Host/Admin Controls Unlocked';
+    document.getElementById('roleBadge').className = 'badge yellow';
+  }
+
+  function lockHostControls() {
+    hostControlsUnlocked = false;
+    document.getElementById('hostControlsArea').classList.add('hidden');
+    document.getElementById('hostControlsLockedNotice').classList.remove('hidden');
+    document.getElementById('hostLoginBox').classList.remove('hidden');
+    document.getElementById('hostPasswordInput').value = '';
+  }
+
+  function requireHostAccess() {
+    if (!hostControlsUnlocked) {
+      alert('Host/admin controls are locked. Enter the host password first.');
+      return false;
+    }
+    return true;
+  }
+
+  function updateTournamentSystemSettings() {
+    if (!requireHostAccess()) return;
+
+    const sys = document.getElementById('tournamentSystemSelect').value;
+    const tag = document.getElementById('tournamentRoundTag').value.trim() || 'Round 1';
+
+    db.ref('settings').update({
+      system: sys,
+      roundTag: tag
+    }, err => {
+      if (err) alert('Failed to update settings: ' + err.message);
+      else alert('💾 Tournament format and round settings saved successfully!');
+    });
+  }
+
+  function toggleRegistrationLock() {
+    if (!requireHostAccess()) return;
+    db.ref('settings').update({
+      registrationLocked: !isRegistrationLocked
+    });
+  }
+
+  function kickoffTournament() {
+    if (!requireHostAccess()) return;
+
+    const updates = {};
+    Object.keys(allPlayers).forEach(id => {
+      if (allPlayers[id] && allPlayers[id].status === 'searching') {
+        updates['/players/' + id + '/status'] = 'idle';
+      }
+    });
+
+    updates['/settings/registrationLocked'] = true;
+    updates['/settings/tournamentStarted'] = true;
+
+    db.ref().update(updates, err => {
+      if (err) {
+        alert('Kickoff failed: ' + err.message);
+      } else {
+        alert('🚀 Tournament Round kicked off! Players can queue up on Servers 1 to 4.');
+      }
+    });
+  }
+
+  function resetTournamentData() {
+    if (!requireHostAccess()) return;
+    if (!confirm('⚠️ Are you sure you want to wipe all matches, leaderboard scores, and player statuses?')) return;
+
+    const updates = { '/matches': null, '/settings': null };
+    Object.keys(allPlayers).forEach(id => {
+      updates['/players/' + id + '/status'] = 'idle';
+      updates['/players/' + id + '/serverQueue'] = null;
+    });
+
+    db.ref().update(updates, error => {
+      if (error) {
+        alert('Reset failed: ' + error.message);
+        return;
+      }
+      if (timerInterval) clearInterval(timerInterval);
+      if (gameOverCountdownInterval) clearInterval(gameOverCountdownInterval);
+      activeMatchId = null;
+      activeMatchData = null;
+      isGameOverHandled = false;
+      alert('Tournament data reset successfully.');
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+  }
+
+  // ==========================================
+  // RANKED LEADERBOARD
+  // ==========================================
+  function updateLeaderboard() {
+    let stats = {};
+
+    for (let id in allPlayers) {
+      stats[id] = {
+        name: allPlayers[id].name,
+        email: allPlayers[id].email,
+        points: 0,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0
+      };
+    }
+
+    for (let id in allMatches) {
+      const m = allMatches[id];
+      if (m.status === 'Completed' && m.result) {
+        const wId = m.whiteId;
+        const bId = m.blackId;
+
+        if (!stats[wId]) stats[wId] = { name: m.whiteName, email: '', points: 0, played: 0, wins: 0, draws: 0, losses: 0 };
+        if (!stats[bId]) stats[bId] = { name: m.blackName, email: '', points: 0, played: 0, wins: 0, draws: 0, losses: 0 };
+
+        stats[wId].played++;
+        stats[bId].played++;
+
+        if (m.result === '1-0') {
+          stats[wId].points += 1;
+          stats[wId].wins++;
+          stats[bId].losses++;
+        } else if (m.result === '0-1') {
+          stats[bId].points += 1;
+          stats[bId].wins++;
+          stats[wId].losses++;
+        } else if (m.result === '1/2-1/2') {
+          stats[wId].points += 0.5;
+          stats[bId].points += 0.5;
+          stats[wId].draws++;
+          stats[bId].draws++;
+        }
+      }
+    }
+
+    let sorted = Object.values(stats).sort((a, b) => b.points - a.points || b.wins - a.wins || a.played - b.played);
+
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = sorted.map((p, index) => {
+      let rankDisplay = `#${index + 1}`;
+      let rankClass = '';
+      
+      if (index === 0) { rankDisplay = '🥇 1st'; rankClass = 'rank-1'; }
+      else if (index === 1) { rankDisplay = '🥈 2nd'; rankClass = 'rank-2'; }
+      else if (index === 2) { rankDisplay = '🥉 3rd'; rankClass = 'rank-3'; }
+
+      return `<tr>
+        <td class="rank-badge ${rankClass}">${rankDisplay}</td>
+        <td><strong>${escapeHtml(p.name)}</strong><br><small style="color:var(--text-muted)">${escapeHtml(p.email || 'Registered')}</small>${index < 8 ? '<br><span class="tag tag-live">TOP 8 QUALIFIER</span>' : ''}</td>
+        <td><strong>${p.points} pts</strong></td>
+        <td>${p.played}</td>
+        <td>${p.wins}W / ${p.draws}D / ${p.losses}L</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" style="color:var(--text-muted); text-align:center;">No standings available yet.</td></tr>';
+  }
+</script>
+</body>
+</html>
